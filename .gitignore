@@ -1,0 +1,17 @@
+# 配置文件 (包含敏感信息)
+config.yaml
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+*.egg-info/
+
+# 日志
+*.log
+
+# 临时文件
+temp_inbox/
+*.tmp

@@ -1,0 +1,22 @@
+[Unit]
+Description=Miniflux RSS Sync Service
+After=network.target
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/opt/rss-sync
+ExecStart=/opt/rss-sync/venv/bin/python /opt/rss-sync/sync_miniflux.py
+StandardOutput=journal
+StandardError=journal
+
+# 安全限制
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+# 允许读写临时目录、日志，以及读取 rclone 配置
+ReadWritePaths=/root/rss_sync /var/log
+ReadOnlyPaths=/root/.config/rclone
+
+[Install]
+WantedBy=multi-user.target

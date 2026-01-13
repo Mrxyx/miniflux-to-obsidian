@@ -1,0 +1,15 @@
+[Unit]
+Description=Run Miniflux RSS Sync periodically
+
+[Timer]
+# 每 15 分钟执行一次
+OnCalendar=*:0/15
+# 系统启动后 1 分钟开始
+OnBootSec=1min
+# 如果错过了执行时间，立即执行
+Persistent=true
+# 随机延迟 0-60 秒，避免同时请求
+RandomizedDelaySec=60
+
+[Install]
+WantedBy=timers.target

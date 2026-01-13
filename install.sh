@@ -59,8 +59,16 @@ check_rclone() {
 
 # 获取脚本来源目录（本地或从 GitHub 克隆）
 get_script_dir() {
-    # 检查是否通过 curl | bash 执行（BASH_SOURCE 为空或不存在）
-    if [ -z "${BASH_SOURCE[0]}" ] || [ ! -f "${BASH_SOURCE[0]}" ]; then
+    # 先尝试获取本地脚本目录
+    LOCAL_DIR=""
+    if [ -n "${BASH_SOURCE[0]}" ]; then
+        LOCAL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)" || true
+    fi
+    
+    # 检查本地目录是否包含项目文件
+    if [ -n "$LOCAL_DIR" ] && [ -f "${LOCAL_DIR}/sync_miniflux.py" ]; then
+        SCRIPT_DIR="$LOCAL_DIR"
+    else
         # 从 GitHub 克隆到临时目录
         info "从 GitHub 获取最新代码..."
         SCRIPT_DIR=$(mktemp -d)
@@ -68,8 +76,6 @@ get_script_dir() {
         if ! git clone --depth 1 "${GITHUB_REPO}" "${SCRIPT_DIR}" 2>/dev/null; then
             error "无法从 GitHub 克隆代码，请检查网络连接"
         fi
-    else
-        SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     fi
 }
 

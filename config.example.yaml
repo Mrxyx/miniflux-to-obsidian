@@ -7,6 +7,19 @@ miniflux:
   # API Key (在 Miniflux 设置 -> API Keys 中生成)
   api_key: "your_api_key_here"
 
+# Claude AI 分析配置
+claude:
+  # 是否启用 AI 分析
+  enabled: true
+  # API 服务地址 (留空使用官方 API)
+  # 自建服务示例: http://your-vps:3000
+  base_url: ""
+  # API Key
+  api_key: "your_api_key_here"
+  # 模型选择 (推荐 claude-haiku 性价比高)
+  # 可选: claude-haiku-4-5, claude-sonnet-4-5, claude-opus-4-5
+  model: "claude-opus-4-5"
+
 sync:
   # 临时保存路径 (脚本生成到这里，rclone 再从这里搬走)
   temp_path: "/root/rss_sync/temp_inbox"

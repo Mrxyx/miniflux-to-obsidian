@@ -124,6 +124,20 @@ enable_timer() {
     systemctl status ${SERVICE_NAME}.timer --no-pager || true
 }
 
+# 安装快捷更新命令
+install_update_command() {
+    info "安装快捷更新命令..."
+    
+    cat > /usr/local/bin/rss-sync-update << 'EOF'
+#!/bin/bash
+# RSS Sync 一键更新脚本
+curl -sL https://raw.githubusercontent.com/Mrxyx/miniflux-to-obsidian/main/install.sh | sudo bash -s update
+EOF
+    
+    chmod +x /usr/local/bin/rss-sync-update
+    info "已安装快捷命令: rss-sync-update"
+}
+
 # 打印使用说明
 print_usage() {
     echo ""
@@ -153,6 +167,9 @@ print_usage() {
     echo "   5. 查看日志:"
     echo "      journalctl -u ${SERVICE_NAME}.service"
     echo "      tail -f /var/log/rss_sync.log"
+    echo ""
+    echo "   6. 更新到最新版本:"
+    echo "      rss-sync-update"
     echo ""
 }
 
@@ -296,6 +313,7 @@ main() {
             setup_venv
             install_systemd
             enable_timer
+            install_update_command
             print_usage
             ;;
         *)

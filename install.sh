@@ -72,6 +72,11 @@ install_files() {
     cp "${SCRIPT_DIR}/sync_miniflux.py" "${INSTALL_DIR}/"
     cp "${SCRIPT_DIR}/requirements.txt" "${INSTALL_DIR}/"
     
+    # 复制 lib 目录
+    if [ -d "${SCRIPT_DIR}/lib" ]; then
+        cp -r "${SCRIPT_DIR}/lib" "${INSTALL_DIR}/"
+    fi
+    
     # 如果配置文件不存在，复制示例配置
     if [ ! -f "${INSTALL_DIR}/config.yaml" ]; then
         cp "${SCRIPT_DIR}/config.example.yaml" "${INSTALL_DIR}/config.yaml"
@@ -207,6 +212,18 @@ update() {
     cp "${TMP_DIR}/sync_miniflux.py" "${INSTALL_DIR}/"
     cp "${TMP_DIR}/requirements.txt" "${INSTALL_DIR}/"
     
+    # 复制 lib 目录（如果存在）
+    if [ -d "${TMP_DIR}/lib" ]; then
+        rm -rf "${INSTALL_DIR}/lib"
+        cp -r "${TMP_DIR}/lib" "${INSTALL_DIR}/"
+        info "已更新 lib 模块"
+    fi
+    
+    # 检查配置文件是否有新增配置项
+    if [ -f "${TMP_DIR}/config.example.yaml" ]; then
+        cp "${TMP_DIR}/config.example.yaml" "${INSTALL_DIR}/config.example.yaml"
+    fi
+    
     # 更新 systemd 配置
     info "更新 systemd 配置..."
     cp "${TMP_DIR}/systemd/rss-sync.service" /etc/systemd/system/
@@ -229,6 +246,9 @@ update() {
     echo ""
     echo "📝 配置文件保留在: ${INSTALL_DIR}/config.yaml"
     echo "📦 备份文件: ${INSTALL_DIR}/config.yaml.bak"
+    echo ""
+    echo -e "${YELLOW}⚠️  请检查是否有新增配置项：${NC}"
+    echo "   diff ${INSTALL_DIR}/config.yaml ${INSTALL_DIR}/config.example.yaml"
     echo ""
     echo "🔧 测试运行:"
     echo "   systemctl start ${SERVICE_NAME}.service"

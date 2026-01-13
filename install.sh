@@ -131,7 +131,7 @@ install_update_command() {
     cat > /usr/local/bin/rss-sync-update << 'EOF'
 #!/bin/bash
 # RSS Sync 一键更新脚本
-curl -sL https://raw.githubusercontent.com/Mrxyx/miniflux-to-obsidian/main/install.sh | sudo bash -s update
+curl -sL https://raw.githubusercontent.com/Mrxyx/miniflux-to-obsidian/main/install.sh | sudo bash -s -- update
 EOF
     
     chmod +x /usr/local/bin/rss-sync-update

@@ -85,7 +85,7 @@ journalctl -u rss-sync.service
 tail -f /var/log/rss_sync.log
 
 # 卸载
-curl -sL https://raw.githubusercontent.com/Mrxyx/miniflux-to-obsidian/main/install.sh | sudo bash -s uninstall
+curl -sL https://raw.githubusercontent.com/Mrxyx/miniflux-to-obsidian/main/install.sh | sudo bash -s -- uninstall
 ```
 
 ## 目录结构

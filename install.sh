@@ -68,21 +68,23 @@ install_files() {
     
     mkdir -p "${INSTALL_DIR}"
     
-    # 复制文件
+    # 复制主脚本和依赖文件
     cp "${SCRIPT_DIR}/sync_miniflux.py" "${INSTALL_DIR}/"
     cp "${SCRIPT_DIR}/requirements.txt" "${INSTALL_DIR}/"
     
     # 复制 lib 目录
-    if [ -d "${SCRIPT_DIR}/lib" ]; then
-        cp -r "${SCRIPT_DIR}/lib" "${INSTALL_DIR}/"
-    fi
+    rm -rf "${INSTALL_DIR}/lib"
+    cp -r "${SCRIPT_DIR}/lib" "${INSTALL_DIR}/"
     
-    # 如果配置文件不存在，复制示例配置
+    # 复制示例配置（供参考）
+    cp "${SCRIPT_DIR}/config.example.yaml" "${INSTALL_DIR}/"
+    
+    # 如果配置文件不存在，从示例创建
     if [ ! -f "${INSTALL_DIR}/config.yaml" ]; then
         cp "${SCRIPT_DIR}/config.example.yaml" "${INSTALL_DIR}/config.yaml"
         warn "已创建配置文件 ${INSTALL_DIR}/config.yaml，请修改配置！"
     else
-        info "配置文件已存在，跳过"
+        info "配置文件已存在，跳过（可参考 config.example.yaml 查看新配置项）"
     fi
 }
 
@@ -212,17 +214,13 @@ update() {
     cp "${TMP_DIR}/sync_miniflux.py" "${INSTALL_DIR}/"
     cp "${TMP_DIR}/requirements.txt" "${INSTALL_DIR}/"
     
-    # 复制 lib 目录（如果存在）
-    if [ -d "${TMP_DIR}/lib" ]; then
-        rm -rf "${INSTALL_DIR}/lib"
-        cp -r "${TMP_DIR}/lib" "${INSTALL_DIR}/"
-        info "已更新 lib 模块"
-    fi
+    # 更新 lib 目录
+    rm -rf "${INSTALL_DIR}/lib"
+    cp -r "${TMP_DIR}/lib" "${INSTALL_DIR}/"
     
-    # 检查配置文件是否有新增配置项
-    if [ -f "${TMP_DIR}/config.example.yaml" ]; then
-        cp "${TMP_DIR}/config.example.yaml" "${INSTALL_DIR}/config.example.yaml"
-    fi
+    # 更新示例配置（供用户参考新配置项）
+    cp "${TMP_DIR}/config.example.yaml" "${INSTALL_DIR}/"
+    info "已更新 config.example.yaml，如有新配置项请参考添加到 config.yaml"
     
     # 更新 systemd 配置
     info "更新 systemd 配置..."
@@ -246,9 +244,6 @@ update() {
     echo ""
     echo "📝 配置文件保留在: ${INSTALL_DIR}/config.yaml"
     echo "📦 备份文件: ${INSTALL_DIR}/config.yaml.bak"
-    echo ""
-    echo -e "${YELLOW}⚠️  请检查是否有新增配置项：${NC}"
-    echo "   diff ${INSTALL_DIR}/config.yaml ${INSTALL_DIR}/config.example.yaml"
     echo ""
     echo "🔧 测试运行:"
     echo "   systemctl start ${SERVICE_NAME}.service"

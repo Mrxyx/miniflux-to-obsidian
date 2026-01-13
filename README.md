@@ -83,6 +83,10 @@ systemctl start rss-sync.timer
 journalctl -u rss-sync.service
 tail -f /var/log/rss_sync.log
 
+# 更新到最新版本
+cd /path/to/sync-vps && git pull
+sudo bash install.sh update
+
 # 卸载
 sudo bash install.sh uninstall
 ```

@@ -1,7 +1,10 @@
 #!/bin/bash
 #
 # Miniflux RSS 同步工具 - 一键部署脚本
-# 用法: sudo bash install.sh
+# 用法: 
+#   安装: sudo bash install.sh
+#   更新: sudo bash install.sh update
+#   卸载: sudo bash install.sh uninstall
 #
 
 set -e
@@ -9,6 +12,7 @@ set -e
 # ================= 配置 =================
 INSTALL_DIR="/opt/rss-sync"
 SERVICE_NAME="rss-sync"
+GITHUB_REPO="https://github.com/Mrxyx/miniflux-to-obsidian.git"
 # ========================================
 
 # 颜色输出
@@ -167,6 +171,86 @@ uninstall() {
     exit 0
 }
 
+# 更新函数
+update() {
+    info "正在更新 ${SERVICE_NAME}..."
+    
+    # 检查安装目录是否存在
+    if [ ! -d "${INSTALL_DIR}" ]; then
+        error "未找到安装目录 ${INSTALL_DIR}，请先运行安装"
+    fi
+    
+    # 创建临时目录
+    TMP_DIR=$(mktemp -d)
+    trap "rm -rf ${TMP_DIR}" EXIT
+    
+    # 从 GitHub 克隆最新代码
+    info "从 GitHub 拉取最新代码..."
+    if ! git clone --depth 1 "${GITHUB_REPO}" "${TMP_DIR}" 2>/dev/null; then
+        # 如果 GITHUB_REPO 未配置，尝试从当前目录更新
+        if [ -f "${SCRIPT_DIR}/sync_miniflux.py" ]; then
+            info "使用本地代码更新..."
+            TMP_DIR="${SCRIPT_DIR}"
+        else
+            error "无法获取更新，请检查 GITHUB_REPO 配置或从代码目录运行"
+        fi
+    fi
+    
+    # 备份当前配置
+    if [ -f "${INSTALL_DIR}/config.yaml" ]; then
+        cp "${INSTALL_DIR}/config.yaml" "${INSTALL_DIR}/config.yaml.bak"
+        info "已备份配置文件"
+    fi
+    
+    # 更新脚本文件
+    info "更新脚本文件..."
+    cp "${TMP_DIR}/sync_miniflux.py" "${INSTALL_DIR}/"
+    cp "${TMP_DIR}/requirements.txt" "${INSTALL_DIR}/"
+    
+    # 更新 systemd 配置
+    info "更新 systemd 配置..."
+    cp "${TMP_DIR}/systemd/rss-sync.service" /etc/systemd/system/
+    cp "${TMP_DIR}/systemd/rss-sync.timer" /etc/systemd/system/
+    systemctl daemon-reload
+    
+    # 更新 Python 依赖
+    info "更新 Python 依赖..."
+    cd "${INSTALL_DIR}"
+    ./venv/bin/pip install -r requirements.txt -q
+    
+    # 重启定时任务
+    info "重启定时任务..."
+    systemctl restart ${SERVICE_NAME}.timer
+    
+    echo ""
+    echo "=========================================="
+    echo -e "${GREEN}✅ 更新完成！${NC}"
+    echo "=========================================="
+    echo ""
+    echo "📝 配置文件保留在: ${INSTALL_DIR}/config.yaml"
+    echo "📦 备份文件: ${INSTALL_DIR}/config.yaml.bak"
+    echo ""
+    echo "🔧 测试运行:"
+    echo "   systemctl start ${SERVICE_NAME}.service"
+    echo "   journalctl -u ${SERVICE_NAME}.service -f"
+    echo ""
+    
+    exit 0
+}
+
+# 显示帮助
+show_help() {
+    echo "用法: sudo bash install.sh [命令]"
+    echo ""
+    echo "命令:"
+    echo "  (无)        首次安装"
+    echo "  update      更新到最新版本"
+    echo "  uninstall   卸载服务"
+    echo "  help        显示此帮助"
+    echo ""
+    exit 0
+}
+
 # 主函数
 main() {
     echo ""
@@ -175,21 +259,34 @@ main() {
     echo "=========================================="
     echo ""
     
-    # 检查是否卸载
-    if [ "$1" = "uninstall" ] || [ "$1" = "--uninstall" ]; then
-        check_root
-        uninstall
-    fi
-    
-    check_root
-    check_python
-    check_rclone
     get_script_dir
-    install_files
-    setup_venv
-    install_systemd
-    enable_timer
-    print_usage
+    
+    case "$1" in
+        uninstall|--uninstall)
+            check_root
+            uninstall
+            ;;
+        update|--update)
+            check_root
+            update
+            ;;
+        help|--help|-h)
+            show_help
+            ;;
+        "")
+            check_root
+            check_python
+            check_rclone
+            install_files
+            setup_venv
+            install_systemd
+            enable_timer
+            print_usage
+            ;;
+        *)
+            error "未知命令: $1\n运行 'bash install.sh help' 查看帮助"
+            ;;
+    esac
 }
 
 main "$@"

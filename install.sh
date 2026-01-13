@@ -250,6 +250,9 @@ update() {
     cd "${INSTALL_DIR}"
     ./venv/bin/pip install -r requirements.txt -q
     
+    # 安装/更新快捷命令
+    install_update_command
+    
     # 重启定时任务
     info "重启定时任务..."
     systemctl restart ${SERVICE_NAME}.timer

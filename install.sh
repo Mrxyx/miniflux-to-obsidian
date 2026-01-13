@@ -57,9 +57,20 @@ check_rclone() {
     fi
 }
 
-# 获取脚本所在目录
+# 获取脚本来源目录（本地或从 GitHub 克隆）
 get_script_dir() {
-    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    # 检查是否通过 curl | bash 执行（BASH_SOURCE 为空或不存在）
+    if [ -z "${BASH_SOURCE[0]}" ] || [ ! -f "${BASH_SOURCE[0]}" ]; then
+        # 从 GitHub 克隆到临时目录
+        info "从 GitHub 获取最新代码..."
+        SCRIPT_DIR=$(mktemp -d)
+        trap "rm -rf ${SCRIPT_DIR}" EXIT
+        if ! git clone --depth 1 "${GITHUB_REPO}" "${SCRIPT_DIR}" 2>/dev/null; then
+            error "无法从 GitHub 克隆代码，请检查网络连接"
+        fi
+    else
+        SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    fi
 }
 
 # 安装到目标目录

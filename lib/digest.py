@@ -104,8 +104,12 @@ def generate_digest(claude_config, title, content, feed_title):
         )
 
         result_text = message.content[0].text.strip()
+        # 清理各种 AI 返回格式：```json ... ```、json\n{...}、纯文本包裹等
         result_text = re.sub(r'^\s*```(?:json)?\s*\n?', '', result_text)
         result_text = re.sub(r'\n?\s*```\s*$', '', result_text)
+        # 处理 AI 返回 "json\n{...}" 格式（无反引号）
+        result_text = re.sub(r'^\s*json\s*\n', '', result_text)
+        result_text = result_text.strip()
 
         # 尝试直接解析，失败则用 regex 提取 JSON 对象
         try:
@@ -122,7 +126,7 @@ def generate_digest(claude_config, title, content, feed_title):
         return result
 
     except json.JSONDecodeError as e:
-        logging.warning(f"导读 JSON 解析失败: {e}")
+        logging.warning(f"导读 JSON 解析失败: {e}, raw: {result_text[:200]}")
         return None
     except Exception as e:
         logging.warning(f"导读生成失败: {e}")

@@ -54,8 +54,8 @@ def save_state(state):
                 pass
 
 
-def process_entries(config, client, entries, state):
-    """处理一批文章，生成导读并回写，每篇处理完即更新 state"""
+def process_entries(config, client, entries):
+    """处理一批文章，生成导读并回写"""
     claude_config = config.get('claude', {})
     success = 0
     skip = 0
@@ -67,19 +67,15 @@ def process_entries(config, client, entries, state):
         content = entry.get('content', '')
         feed_title = entry.get('feed', {}).get('title', '')
 
-        # 已有导读标记 或 内容为空，跳过
+        # 已有导读标记，跳过（不调 AI）
         if has_digest(content):
-            logging.debug(f"跳过（已有导读）: {title[:50]}")
             skip += 1
-            state['last_entry_id'] = entry_id
-            save_state(state)
             continue
 
+        # 内容为空，跳过
         if not content or not content.strip():
             logging.info(f"跳过（内容为空）: {title[:50]}")
             skip += 1
-            state['last_entry_id'] = entry_id
-            save_state(state)
             continue
 
         # 生成导读
@@ -87,9 +83,6 @@ def process_entries(config, client, entries, state):
         if not digest_result:
             logging.warning(f"导读生成失败: {title[:50]}")
             fail += 1
-            # 推进游标，避免卡在同一篇（AI 无法处理的文章不值得无限重试）
-            state['last_entry_id'] = entry_id
-            save_state(state)
             continue
 
         # 拼接：导读 HTML + 原始内容
@@ -100,14 +93,9 @@ def process_entries(config, client, entries, state):
         if client.update_entry_content(entry_id, new_content):
             logging.info(f"✅ 导读已写入: {title[:50]}")
             success += 1
-            # 成功才更新游标和计数
-            state['last_entry_id'] = entry_id
-            state['processed_count'] = state.get('processed_count', 0) + 1
-            save_state(state)
         else:
             logging.error(f"❌ 回写失败: {title[:50]}")
             fail += 1
-            # 回写失败不推进游标，下轮重试
 
         # 限速
         time.sleep(1)
@@ -116,7 +104,9 @@ def process_entries(config, client, entries, state):
 
 
 def run_digest(config):
-    """主逻辑：拉取文章 → 生成导读 → 回写"""
+    """主逻辑：拉取未读文章 → 生成导读 → 回写
+    不使用游标，每轮直接查 unread 文章，靠 HTML 标记做幂等。
+    """
     miniflux_config = config['miniflux']
     digest_config = config.get('digest', {})
 
@@ -127,15 +117,12 @@ def run_digest(config):
         api_key=miniflux_config['api_key']
     )
 
-    state = load_state()
-    last_id = state.get('last_entry_id', 0)
-
-    # 拉取 unread 文章（从上次处理位置之后）
-    logging.info(f"拉取文章 (after_id={last_id}, limit={batch_size})...")
+    # 直接拉取未读且没有导读标记的文章
+    # Miniflux API 不支持按内容过滤，所以拉一批 unread，代码侧跳过已有标记的
+    logging.info(f"拉取未读文章 (limit={batch_size})...")
     entries = client.get_entries(
         limit=batch_size,
         status="unread",
-        after_entry_id=last_id if last_id > 0 else None
     )
 
     if entries is None:
@@ -148,7 +135,7 @@ def run_digest(config):
 
     logging.info(f"获取到 {len(entries)} 篇文章，开始生成导读...")
 
-    success, skip, fail = process_entries(config, client, entries, state)
+    success, skip, fail = process_entries(config, client, entries)
 
     logging.info(f"本轮完成: 成功 {success}, 跳过 {skip}, 失败 {fail}")
     return 0 if fail == 0 else 1
@@ -173,8 +160,7 @@ def main():
     setup_logging(config)
 
     if args.reset:
-        save_state({"last_entry_id": 0, "processed_count": 0})
-        logging.info("已重置处理状态")
+        logging.info("reset 参数已废弃，当前版本不使用游标")
 
     # 文件锁：防止多个实例并发运行
     lock_fd = open(LOCK_FILE, 'w')

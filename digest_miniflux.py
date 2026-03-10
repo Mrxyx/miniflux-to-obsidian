@@ -67,11 +67,17 @@ def process_entries(config, client, entries, state):
         content = entry.get('content', '')
         feed_title = entry.get('feed', {}).get('title', '')
 
-        # 已有导读标记，跳过
+        # 已有导读标记 或 内容为空，跳过
         if has_digest(content):
             logging.debug(f"跳过（已有导读）: {title[:50]}")
             skip += 1
-            # 即使跳过也更新游标
+            state['last_entry_id'] = entry_id
+            save_state(state)
+            continue
+
+        if not content or not content.strip():
+            logging.info(f"跳过（内容为空）: {title[:50]}")
+            skip += 1
             state['last_entry_id'] = entry_id
             save_state(state)
             continue
@@ -79,10 +85,12 @@ def process_entries(config, client, entries, state):
         # 生成导读
         digest_result = generate_digest(claude_config, title, content, feed_title)
         if not digest_result:
-            logging.warning(f"导读生成失败，跳过: {title[:50]}")
+            logging.warning(f"导读生成失败: {title[:50]}")
             fail += 1
-            # AI 调用失败不推进游标，下轮重试（可能是临时网络/限流问题）
-            break
+            # 推进游标，避免卡在同一篇（AI 无法处理的文章不值得无限重试）
+            state['last_entry_id'] = entry_id
+            save_state(state)
+            continue
 
         # 拼接：导读 HTML + 原始内容
         digest_html = build_digest_html(digest_result)

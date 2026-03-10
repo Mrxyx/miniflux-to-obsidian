@@ -87,6 +87,7 @@ install_files() {
     
     # 复制主脚本和依赖文件
     cp "${SCRIPT_DIR}/sync_miniflux.py" "${INSTALL_DIR}/"
+    cp "${SCRIPT_DIR}/digest_miniflux.py" "${INSTALL_DIR}/"
     cp "${SCRIPT_DIR}/requirements.txt" "${INSTALL_DIR}/"
     
     # 复制 lib 目录
@@ -126,6 +127,8 @@ install_systemd() {
     
     cp "${SCRIPT_DIR}/systemd/rss-sync.service" /etc/systemd/system/
     cp "${SCRIPT_DIR}/systemd/rss-sync.timer" /etc/systemd/system/
+    cp "${SCRIPT_DIR}/systemd/rss-digest.service" /etc/systemd/system/
+    cp "${SCRIPT_DIR}/systemd/rss-digest.timer" /etc/systemd/system/
     
     systemctl daemon-reload
 }
@@ -136,9 +139,12 @@ enable_timer() {
     
     systemctl enable ${SERVICE_NAME}.timer
     systemctl start ${SERVICE_NAME}.timer
+    systemctl enable rss-digest.timer
+    systemctl start rss-digest.timer
     
     info "定时任务状态:"
     systemctl status ${SERVICE_NAME}.timer --no-pager || true
+    systemctl status rss-digest.timer --no-pager || true
 }
 
 # 安装快捷更新命令
@@ -250,6 +256,7 @@ update() {
     # 更新脚本文件
     info "更新脚本文件..."
     cp "${TMP_DIR}/sync_miniflux.py" "${INSTALL_DIR}/"
+    cp "${TMP_DIR}/digest_miniflux.py" "${INSTALL_DIR}/"
     cp "${TMP_DIR}/requirements.txt" "${INSTALL_DIR}/"
     
     # 更新 lib 目录
@@ -264,6 +271,8 @@ update() {
     info "更新 systemd 配置..."
     cp "${TMP_DIR}/systemd/rss-sync.service" /etc/systemd/system/
     cp "${TMP_DIR}/systemd/rss-sync.timer" /etc/systemd/system/
+    cp "${TMP_DIR}/systemd/rss-digest.service" /etc/systemd/system/
+    cp "${TMP_DIR}/systemd/rss-digest.timer" /etc/systemd/system/
     systemctl daemon-reload
     
     # 更新 Python 依赖
@@ -277,6 +286,7 @@ update() {
     # 重启定时任务
     info "重启定时任务..."
     systemctl restart ${SERVICE_NAME}.timer
+    systemctl restart rss-digest.timer
     
     echo ""
     echo "=========================================="

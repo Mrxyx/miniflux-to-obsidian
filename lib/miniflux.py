@@ -52,3 +52,36 @@ class MinifluxClient:
         for entry in entries:
             self.unstar_entry(entry['id'])
         logging.info("✅ 收藏已取消")
+
+    def get_entries(self, limit=50, status="unread", after_entry_id=None):
+        """获取文章列表"""
+        try:
+            params = {"status": status, "limit": limit, "order": "id", "direction": "asc"}
+            if after_entry_id:
+                params["after_entry_id"] = after_entry_id
+            resp = requests.get(
+                f"{self.host}/v1/entries",
+                headers=self.headers,
+                params=params,
+                timeout=30
+            )
+            resp.raise_for_status()
+            return resp.json().get('entries', [])
+        except requests.RequestException as e:
+            logging.error(f"获取文章失败: {e}")
+            return None
+
+    def update_entry_content(self, entry_id, content):
+        """更新文章内容"""
+        try:
+            resp = requests.put(
+                f"{self.host}/v1/entries/{entry_id}",
+                headers=self.headers,
+                json={"content": content},
+                timeout=30
+            )
+            resp.raise_for_status()
+            return True
+        except requests.RequestException as e:
+            logging.error(f"更新文章内容失败 (id={entry_id}): {e}")
+            return False

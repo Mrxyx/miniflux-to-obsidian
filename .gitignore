@@ -15,3 +15,7 @@ venv/
 # 临时文件
 temp_inbox/
 *.tmp
+
+# 导读状态文件和锁文件
+digest_state.json
+digest.lock

@@ -1,0 +1,15 @@
+[Unit]
+Description=Run Miniflux AI Digest periodically
+
+[Timer]
+# 每 10 分钟执行一次
+OnCalendar=*:0/10
+# 系统启动后 2 分钟开始（错开 rss-sync）
+OnBootSec=2min
+# 如果错过了执行时间，立即执行
+Persistent=true
+# 随机延迟 0-30 秒
+RandomizedDelaySec=30
+
+[Install]
+WantedBy=timers.target

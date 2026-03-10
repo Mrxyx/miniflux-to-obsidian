@@ -1,0 +1,14 @@
+[Unit]
+Description=Miniflux AI Digest Service
+After=network.target
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/opt/rss-sync
+ExecStart=/opt/rss-sync/venv/bin/python /opt/rss-sync/digest_miniflux.py
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

@@ -107,7 +107,17 @@ def generate_digest(claude_config, title, content, feed_title):
         result_text = re.sub(r'^\s*```(?:json)?\s*\n?', '', result_text)
         result_text = re.sub(r'\n?\s*```\s*$', '', result_text)
 
-        result = json.loads(result_text)
+        # 尝试直接解析，失败则用 regex 提取 JSON 对象
+        try:
+            result = json.loads(result_text)
+        except json.JSONDecodeError:
+            # 兜底：从返回文本中提取第一个 {...} 块
+            match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', result_text, re.DOTALL)
+            if match:
+                result = json.loads(match.group())
+            else:
+                raise
+
         logging.debug(f"导读生成完成: {title[:40]}")
         return result
 

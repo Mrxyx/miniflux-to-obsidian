@@ -45,22 +45,22 @@ $content
 要点提炼要求：每个要点一句话，抓住文章骨架，不要泛泛而谈。
 """)
 
-# 导读 HTML 模板
-DIGEST_HTML = """<div data-ai-digest="done" style="background:#f0f7ff;border-left:4px solid #1a73e8;padding:12px 16px;margin-bottom:20px;border-radius:4px;font-size:14px;line-height:1.6;">
+# 导读幂等标记（data 属性不会被 Miniflux SanitizeHTML 清掉）
+DIGEST_MARKER_ATTR = 'data-ai-digest="done"'
+
+# 导读 HTML 模板（标记内嵌在 div 标签中）
+DIGEST_HTML = f"""<div {DIGEST_MARKER_ATTR} style="background:#f0f7ff;border-left:4px solid #1a73e8;padding:12px 16px;margin-bottom:20px;border-radius:4px;font-size:14px;line-height:1.6;">
 <b>📌 AI 导读</b><br/>
-<b>分类：</b>{category}<br/>
-<b>核心观点：</b>{core_point}<br/>
+<b>分类：</b>{{category}}<br/>
+<b>核心观点：</b>{{core_point}}<br/>
 <b>关键要点：</b><br/>
-{key_points_html}
-<b>涉及领域：</b>{analysis_scope}<br/>
-<b>收益/影响：</b>{impact}<br/>
-<b>⏱ 预估 {read_time_min} 分钟 | 建议：{read_advice}</b>
+{{key_points_html}}
+<b>涉及领域：</b>{{analysis_scope}}<br/>
+<b>收益/影响：</b>{{impact}}<br/>
+<b>⏱ 预估 {{read_time_min}} 分钟 | 建议：{{read_advice}}</b>
 </div>
 <hr/>
 """
-
-# 标记已处理的隐藏标签（用 hidden data 属性，不会被 sanitizer 清掉）
-DIGEST_MARKER = 'data-ai-digest="done"'
 
 
 def _html_to_text(html_content):
@@ -112,7 +112,9 @@ def generate_digest(claude_config, title, content, feed_title):
 
 
 def build_digest_html(digest_result):
-    """将导读 JSON 转为 HTML 区块，所有字段做 HTML 转义防 XSS"""
+    """将导读 JSON 转为 HTML 区块，所有字段做 HTML 转义防 XSS
+    注意：key_points_html 是 pre-escaped 的 trusted HTML，不会被二次转义。
+    """
     if not digest_result:
         return ""
 
@@ -133,5 +135,10 @@ def build_digest_html(digest_result):
 
 
 def has_digest(content):
-    """检查文章是否已有导读标记"""
-    return 'data-ai-digest=' in (content or '') or '<!-- ai-digest-done -->' in (content or '') or 'AI 导读' in (content or '')
+    """检查文章是否已有导读标记。
+    优先检查 data 属性标记（新方案），
+    兼容旧标记（已被 sanitizer 清除，仅作防御性保留）和已重复写入的导读。
+    """
+    c = content or ''
+    return DIGEST_MARKER_ATTR in c \
+        or '📌 AI 导读</b>' in c

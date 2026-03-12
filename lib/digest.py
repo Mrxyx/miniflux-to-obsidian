@@ -46,7 +46,7 @@ $content
 """)
 
 # 导读 HTML 模板
-DIGEST_HTML = """<div style="background:#f0f7ff;border-left:4px solid #1a73e8;padding:12px 16px;margin-bottom:20px;border-radius:4px;font-size:14px;line-height:1.6;">
+DIGEST_HTML = """<div data-ai-digest="done" style="background:#f0f7ff;border-left:4px solid #1a73e8;padding:12px 16px;margin-bottom:20px;border-radius:4px;font-size:14px;line-height:1.6;">
 <b>📌 AI 导读</b><br/>
 <b>分类：</b>{category}<br/>
 <b>核心观点：</b>{core_point}<br/>
@@ -59,8 +59,8 @@ DIGEST_HTML = """<div style="background:#f0f7ff;border-left:4px solid #1a73e8;pa
 <hr/>
 """
 
-# 标记已处理的隐藏标签
-DIGEST_MARKER = '<!-- ai-digest-done -->'
+# 标记已处理的隐藏标签（用 hidden data 属性，不会被 sanitizer 清掉）
+DIGEST_MARKER = 'data-ai-digest="done"'
 
 
 def _html_to_text(html_content):
@@ -121,7 +121,7 @@ def build_digest_html(digest_result):
         f'&nbsp;&nbsp;• {html.escape(str(p))}<br/>' for p in key_points
     )
 
-    return DIGEST_MARKER + '\n' + DIGEST_HTML.format(
+    return DIGEST_HTML.format(
         category=html.escape(str(digest_result.get('category', '未分类'))),
         core_point=html.escape(str(digest_result.get('core_point', ''))),
         key_points_html=key_points_html,
@@ -134,4 +134,4 @@ def build_digest_html(digest_result):
 
 def has_digest(content):
     """检查文章是否已有导读标记"""
-    return DIGEST_MARKER in (content or '')
+    return 'data-ai-digest=' in (content or '') or '<!-- ai-digest-done -->' in (content or '') or 'AI 导读' in (content or '')

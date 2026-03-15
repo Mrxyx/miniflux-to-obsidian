@@ -9,6 +9,8 @@ WorkingDirectory=/opt/rss-sync
 ExecStart=/opt/rss-sync/venv/bin/python /opt/rss-sync/digest_miniflux.py
 StandardOutput=journal
 StandardError=journal
+TimeoutStartSec=480
+TimeoutStopSec=30
 
 [Install]
 WantedBy=multi-user.target

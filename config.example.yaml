@@ -39,8 +39,8 @@ rclone:
 
 # AI 导读配置
 digest:
-  # 每轮处理的文章数量
-  batch_size: 20
+  # 单轮最多处理的文章数量（控制 AI 调用时长）
+  max_process_per_run: 30
   # 导读服务日志文件（独立于 rss-sync）
   log_file: "/var/log/rss_digest.log"
 

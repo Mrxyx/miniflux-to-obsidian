@@ -53,12 +53,14 @@ class MinifluxClient:
             self.unstar_entry(entry['id'])
         logging.info("✅ 收藏已取消")
 
-    def get_entries(self, limit=50, status="unread", after_entry_id=None):
+    def get_entries(self, limit=50, status="unread", after_entry_id=None, offset=None):
         """获取文章列表"""
         try:
             params = {"status": status, "limit": limit, "order": "id", "direction": "asc"}
             if after_entry_id:
                 params["after_entry_id"] = after_entry_id
+            if offset is not None:
+                params["offset"] = offset
             resp = requests.get(
                 f"{self.host}/v1/entries",
                 headers=self.headers,
@@ -67,7 +69,7 @@ class MinifluxClient:
             )
             resp.raise_for_status()
             return resp.json().get('entries', [])
-        except requests.RequestException as e:
+        except (requests.RequestException, ValueError) as e:
             logging.error(f"获取文章失败: {e}")
             return None
 

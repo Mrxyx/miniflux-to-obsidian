@@ -14,7 +14,7 @@ from pathlib import Path
 
 from lib.config import load_config, setup_logging
 from lib.miniflux import MinifluxClient
-from lib.digest import generate_digest, build_digest_html, has_digest
+from lib.digest import generate_digest, build_digest_html, build_skip_html, has_digest, DigestSkipError, DigestRetryError
 
 
 LOCK_FILE = Path(__file__).resolve().parent / "digest.lock"
@@ -95,10 +95,24 @@ def process_entries(config, client, entries, start_time):
         if has_digest(content):
             continue
 
-        digest_result = generate_digest(claude_config, title, content, feed_title)
-        if not digest_result:
-            logging.warning(f"导读生成失败: {title[:50]}")
+        try:
+            digest_result = generate_digest(claude_config, title, content, feed_title)
+        except DigestSkipError as e:
+            logging.warning(f"导读生成失败（永久跳过）: {title[:50]} - {e}")
+            # 给失败文章打 skip 标记，下轮扫描时 has_digest 会识别到，不再重试
+            try:
+                skip_html = build_skip_html()
+                client.update_entry_content(entry_id, skip_html + content)
+            except Exception:
+                logging.exception(f"skip 标记回写失败: {entry_id}")
             fail += 1
+            continue
+        except DigestRetryError as e:
+            logging.warning(f"导读生成失败（临时，下轮重试）: {title[:50]} - {e}")
+            fail += 1
+            continue
+
+        if not digest_result:
             continue
 
         digest_html = build_digest_html(digest_result)

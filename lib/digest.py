@@ -48,6 +48,9 @@ $content
 # 导读幂等标记（data 属性不会被 Miniflux SanitizeHTML 清掉）
 DIGEST_MARKER_ATTR = 'data-ai-digest="done"'
 
+# 失败标记：AI 无法处理的文章（内容不足等），避免反复重试浪费 token
+DIGEST_SKIP_ATTR = 'data-ai-digest="skip"'
+
 # 导读 HTML 模板（标记内嵌在 div 标签中）
 DIGEST_HTML = f"""<div {DIGEST_MARKER_ATTR} style="background:#f0f7ff;border-left:4px solid #1a73e8;padding:12px 16px;margin-bottom:20px;border-radius:4px;font-size:14px;line-height:1.6;">
 <b>📌 AI 导读</b><br/>
@@ -74,8 +77,27 @@ def _html_to_text(html_content):
     return h.handle(html_content)
 
 
+class DigestError(Exception):
+    """导读生成错误基类"""
+    pass
+
+
+class DigestSkipError(DigestError):
+    """AI 判断内容无法处理（永久失败，应标记跳过）"""
+    pass
+
+
+class DigestRetryError(DigestError):
+    """临时失败（网络/限流等，下轮重试）"""
+    pass
+
+
 def generate_digest(claude_config, title, content, feed_title):
-    """调用 AI 生成导读 JSON"""
+    """调用 AI 生成导读 JSON。
+    返回 dict 或 None。
+    抛出 DigestSkipError 表示永久失败（内容不足等），应标记跳过。
+    抛出 DigestRetryError 表示临时失败（网络/限流等），下轮重试。
+    """
     api_key = claude_config.get('api_key', '')
     if not api_key or api_key == 'your_api_key_here':
         logging.debug("Claude API Key 未配置，跳过导读生成")
@@ -104,11 +126,16 @@ def generate_digest(claude_config, title, content, feed_title):
         result = parse_ai_json(message.content[0].text)
         if result:
             logging.debug(f"导读生成完成: {title[:40]}")
-        return result
+            return result
 
+        # AI 返回了但解析不出 JSON → 内容不足等永久问题
+        raise DigestSkipError("AI 返回内容无法解析为 JSON")
+
+    except DigestSkipError:
+        raise
     except Exception as e:
-        logging.warning(f"导读生成失败: {e}")
-        return None
+        # 网络超时、API 限流等临时问题
+        raise DigestRetryError(str(e)) from e
 
 
 def build_digest_html(digest_result):
@@ -135,10 +162,15 @@ def build_digest_html(digest_result):
 
 
 def has_digest(content):
-    """检查文章是否已有导读标记。
-    优先检查 data 属性标记（新方案），
-    兼容旧标记（已被 sanitizer 清除，仅作防御性保留）和已重复写入的导读。
+    """检查文章是否已有导读或已标记为跳过。
+    精确匹配 done 和 skip 两种状态，兼容已有导读的特征 HTML。
     """
     c = content or ''
     return DIGEST_MARKER_ATTR in c \
+        or DIGEST_SKIP_ATTR in c \
         or '📌 AI 导读</b>' in c
+
+
+def build_skip_html():
+    """生成失败标记 HTML（空 span，不可见，仅用于标记）"""
+    return '<span ' + DIGEST_SKIP_ATTR + '></span>'
